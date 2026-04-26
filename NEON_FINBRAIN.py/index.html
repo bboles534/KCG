@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Neon Rift</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Space+Grotesk:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="aurora aurora-left"></div>
+    <div class="aurora aurora-right"></div>
+
+    <main class="shell">
+      <section class="hero">
+        <p class="eyebrow">Browser Arena Shooter</p>
+        <h1>Neon Rift</h1>
+        <p class="lede">
+          Survive the anomaly, chain combos, trigger overdrive, and chase a high score in a fast arcade arena built
+          for desktop and mobile browsers.
+        </p>
+      </section>
+
+      <section class="hud">
+        <div class="stat-card">
+          <span>Score</span>
+          <strong id="score">0</strong>
+        </div>
+        <div class="stat-card">
+          <span>Wave</span>
+          <strong id="wave">1</strong>
+        </div>
+        <div class="stat-card">
+          <span>Combo</span>
+          <strong id="combo">x1.0</strong>
+        </div>
+        <div class="stat-card">
+          <span>Best</span>
+          <strong id="best">0</strong>
+        </div>
+        <div class="stat-card accent">
+          <span>Overdrive</span>
+          <strong id="overdrive">0%</strong>
+        </div>
+      </section>
+
+      <section class="playfield">
+        <canvas id="game" width="1280" height="720" aria-label="Neon Rift game canvas"></canvas>
+
+        <div class="panel panel-left">
+          <h2>Controls</h2>
+          <p>`WASD` / arrows move</p>
+          <p>Mouse aims</p>
+          <p>Hold click or press `Space` to fire</p>
+          <p>`Shift` to dash</p>
+          <p>Touch and drag on mobile</p>
+        </div>
+
+        <div class="panel panel-right">
+          <h2>Systems</h2>
+          <p>Blue shards heal and charge overdrive</p>
+          <p>Orange shards fuel score multipliers</p>
+          <p>Overdrive triples fire rate and pierces enemies</p>
+          <p>Every fifth wave spawns a boss</p>
+        </div>
+
+        <div id="overlay" class="overlay visible">
+          <div class="overlay-card">
+            <p class="eyebrow">Start Run</p>
+            <h2 id="overlay-title">Enter the Rift</h2>
+            <p id="overlay-text">
+              Dodge swarms, keep the combo alive, and hit overdrive at the right moment. The arena scales forever.
+            </p>
+            <button id="start-button" type="button">Play Now</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="mobile-actions">
+        <button id="dash-button" type="button">Dash</button>
+        <button id="overdrive-button" type="button">Overdrive</button>
+      </section>
+    </main>
+
+    <script type="module" src="./game.js"></script>
+  </body>
+</html>

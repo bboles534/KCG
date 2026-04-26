@@ -1,0 +1,2 @@
+"""Financial intelligence platform package."""
+
