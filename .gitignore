@@ -1,0 +1,53 @@
+```
+# Environment variables
+.env
+.env.local
+*.env.*
+
+# Python specific
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+.ENV
+.python-version
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+*.tmp
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Build and distribution artifacts
+dist/
+build/
+*.egg-info/
+.deps/
+
+# Testing
+.pytest_cache/
+.mypy_cache/
+.hypothesis/
+
+# System files
+*.tmp
+*.temp
+```

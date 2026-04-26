@@ -7,3 +7,4 @@ plotly>=5.20.0
 scikit-learn>=1.4.0
 yfinance>=0.2.40
 feedparser>=6.0.11
+google-generativeai>=0.8.0
