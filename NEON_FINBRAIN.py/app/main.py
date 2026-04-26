@@ -7,7 +7,7 @@ from nicegui import app, ui
 import plotly.graph_objects as go
 
 from app.config import settings
-from app.schemas import ExpenseRequest, PositionRequest
+from app.schemas import ChatReply, ExpenseRequest, PositionRequest
 from app.services.orchestrator import PlatformOrchestrator
 
 platform = PlatformOrchestrator(settings)
@@ -388,13 +388,33 @@ async def home() -> None:
         await platform.run_scenario(float(scenario_slider.value))
         simulator_panel.refresh()
 
-    async def send_chat(prompt: str | None = None) -> None:
+    async def send_chat(prompt: str | None = None, use_gemini: bool = False) -> None:
         message = prompt or chat_input.value or ""
         message = message.strip()
         if not message:
             return
         typing_note.set_visibility(True)
-        reply, _ = await platform.chat(message)
+        
+        if use_gemini and platform.chat_service.gemini_bot:
+            reply_text = await platform.chat_service.gemini_chat(
+                message,
+                platform.get_state().profile,
+                platform.get_state().brain,
+                platform.get_state().portfolio,
+                platform.get_state().market,
+                platform.get_state().news,
+            )
+            platform.store.add_chat_message(platform.settings.default_user_id, "user", message)
+            platform.store.add_chat_message(platform.settings.default_user_id, "assistant", reply_text)
+            reply = ChatReply(
+                response=reply_text,
+                suggestions=platform.chat_service.suggested_prompts(),
+                referenced_tickers=[],
+                updated_profile=None,
+            )
+        else:
+            reply, _ = await platform.chat(message)
+        
         chat_input.set_value("")
         typing_note.set_visibility(False)
         refresh_all_sections()
@@ -630,11 +650,29 @@ async def home() -> None:
                 scenario_slider = ui.slider(min=-15, max=15, value=-5, step=1).classes("w-full")
                 ui.button("Run scenario", on_click=update_scenario)
 
-    chat_container = ui.card().classes("chat-card fixed bottom-4 right-4 z-50")
+    # Popup chat button - clickable to toggle visibility
+    chat_visible = {"value": False}
+    
+    def toggle_chat() -> None:
+        chat_visible["value"] = not chat_visible["value"]
+        chat_container.set_visibility(chat_visible["value"])
+    
+    chat_toggle_btn = ui.button(
+        "💬 AI Chat", 
+        on_click=toggle_chat,
+        icon="chat"
+    ).classes("fixed bottom-4 right-4 z-50").props("fab color=cyan")
+    
+    chat_container = ui.card().classes("chat-card fixed bottom-20 right-4 z-50")
     with chat_container:
-        ui.label("AI Assistant").classes("title-font text-xl")
+        with ui.row().classes("w-full items-center justify-between"):
+            ui.label("AI Assistant").classes("title-font text-xl")
+            ui.button(icon="close", on_click=toggle_chat).props("flat dense size=sm")
         ui.label("Context-aware portfolio and market copilot").classes("subtle")
-
+        
+        # Toggle for Gemini mode
+        use_gemini_toggle = ui.switch("Use Gemini AI", value=True).classes("mt-2")
+        
         @ui.refreshable
         def chat_history() -> None:
             for message in platform.store.list_recent_chat_messages(settings.default_user_id, limit=10):
@@ -651,10 +689,13 @@ async def home() -> None:
         typing_note.set_visibility(False)
         chat_input = ui.input("Ask about goals, tickers, risk, or strategy").classes("w-full")
         with ui.row().classes("w-full gap-2"):
-            ui.button("Send", on_click=lambda: asyncio.create_task(send_chat()))
+            ui.button("Send", on_click=lambda: asyncio.create_task(send_chat(use_gemini=use_gemini_toggle.value)))
         ui.label("Suggested prompts").classes("font-semibold mt-2")
         for suggestion in platform.chat_service.suggested_prompts():
-            ui.button(suggestion, on_click=lambda _, prompt=suggestion: asyncio.create_task(send_chat(prompt))).props("flat").classes("w-full")
+            ui.button(suggestion, on_click=lambda _, prompt=suggestion: asyncio.create_task(send_chat(prompt, use_gemini=use_gemini_toggle.value))).props("flat").classes("w-full")
+    
+    # Start with chat hidden
+    chat_container.set_visibility(False)
 
     ui.timer(settings.refresh_seconds, lambda: asyncio.create_task(timed_refresh()))
 

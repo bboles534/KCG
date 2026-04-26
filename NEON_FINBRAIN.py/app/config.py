@@ -35,6 +35,10 @@ class Settings:
     plaid_secret: str | None = os.getenv("PLAID_SECRET")
     plaid_access_token: str | None = os.getenv("PLAID_ACCESS_TOKEN")
     plaid_base_url: str = os.getenv("PLAID_BASE_URL", "https://sandbox.plaid.com")
+    gemini_api_key: str | None = os.getenv("GEMINI_API_KEY")
+    gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+    google_client_id: str | None = os.getenv("GOOGLE_CLIENT_ID")
+    google_client_secret: str | None = os.getenv("GOOGLE_CLIENT_SECRET")
     default_user_id: str = os.getenv("DEFAULT_USER_ID", "demo-user")
     trusted_news_domains: tuple[str, ...] = (
         "finance.yahoo.com",

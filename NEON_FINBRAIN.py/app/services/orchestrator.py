@@ -42,7 +42,7 @@ class PlatformOrchestrator:
         self.simulator = PaperTradingService(self.store)
         self.scenario_engine = ScenarioEngine()
         self.brain_service = BrainService()
-        self.chat_service = ChatService(self.store)
+        self.chat_service = ChatService(self.store, settings)
         self._lock = asyncio.Lock()
         self._bootstrapped = False
         self.state: DashboardState | None = None

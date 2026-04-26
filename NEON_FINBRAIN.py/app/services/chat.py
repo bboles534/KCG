@@ -1,16 +1,101 @@
 from __future__ import annotations
 
+import asyncio
 import re
 
+import httpx
+
+from app.config import Settings
 from app.schemas import BrainDecision, ChatReply, NewsItem, PortfolioSummary, QuoteSnapshot, UserProfile
 from app.store import SQLiteStore
+
+
+class GeminiChatBot:
+    """Gemini-powered chatbot for dashboard integration."""
+    
+    def __init__(self, api_key: str, model: str = "gemini-2.0-flash") -> None:
+        self.api_key = api_key
+        self.model = model
+        self.base_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}"
+        self.conversation_history: list[dict] = []
+    
+    async def chat(self, message: str, context: dict | None = None) -> str:
+        """Send a message to Gemini and get a response."""
+        self.conversation_history.append({"role": "user", "parts": [{"text": message}]})
+        
+        system_context = self._build_system_context(context)
+        full_prompt = f"{system_context}\n\nUser: {message}"
+        
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                url = f"{self.base_url}:generateContent"
+                params = {"key": self.api_key}
+                payload = {
+                    "contents": [
+                        {"role": "user", "parts": [{"text": full_prompt}]}
+                    ],
+                    "generationConfig": {
+                        "temperature": 0.7,
+                        "topK": 40,
+                        "topP": 0.95,
+                        "maxOutputTokens": 1024,
+                    }
+                }
+                response = await client.post(url, params=params, json=payload)
+                response.raise_for_status()
+                data = response.json()
+                
+                if "candidates" in data and len(data["candidates"]) > 0:
+                    ai_response = data["candidates"][0]["content"]["parts"][0]["text"]
+                else:
+                    ai_response = "I'm unable to process that request right now."
+                
+                self.conversation_history.append({"role": "model", "parts": [{"text": ai_response}]})
+                return ai_response
+        except Exception as e:
+            return f"I encountered an error: {str(e)}. Please try again."
+    
+    def _build_system_context(self, context: dict | None) -> str:
+        """Build system context from dashboard data."""
+        if not context:
+            return "You are a helpful financial assistant integrated into a trading dashboard."
+        
+        parts = ["You are an AI financial assistant with access to real-time market data."]
+        
+        if "portfolio" in context:
+            portfolio = context["portfolio"]
+            parts.append(f"Portfolio value: ${portfolio.get('total_value', 0):,.2f}")
+            parts.append(f"Cash: ${portfolio.get('cash', 0):,.2f}")
+            parts.append(f"Day PnL: ${portfolio.get('day_pnl', 0):,.2f}")
+        
+        if "market_regime" in context:
+            parts.append(f"Current market regime: {context['market_regime']}")
+        
+        if "watchlist" in context:
+            parts.append(f"User watchlist: {', '.join(context['watchlist'])}")
+        
+        if "recent_news" in context and context["recent_news"]:
+            parts.append("Recent news highlights:")
+            for news in context["recent_news"][:3]:
+                parts.append(f"- {news}")
+        
+        return "\n".join(parts)
+    
+    def clear_history(self) -> None:
+        """Clear conversation history."""
+        self.conversation_history = []
 
 
 class ChatService:
     TICKER_PATTERN = re.compile(r"\b[A-Z]{1,5}\b")
 
-    def __init__(self, store: SQLiteStore) -> None:
+    def __init__(self, store: SQLiteStore, settings: Settings | None = None) -> None:
         self.store = store
+        self.settings = settings
+        self.gemini_bot: GeminiChatBot | None = None
+        
+        if settings and settings.gemini_api_key:
+            self.gemini_bot = GeminiChatBot(settings.gemini_api_key, settings.gemini_model)
 
     def handle_message(
         self,
@@ -40,6 +125,36 @@ class ChatService:
             referenced_tickers=tickers,
             updated_profile=updated_profile if profile_changed else None,
         )
+    
+    async def gemini_chat(
+        self,
+        message: str,
+        profile: UserProfile,
+        brain: BrainDecision,
+        portfolio: PortfolioSummary,
+        snapshots: dict[str, QuoteSnapshot],
+        news_map: dict[str, list[NewsItem]],
+    ) -> str:
+        """Handle chat via Gemini AI if available, fallback to rule-based."""
+        if not self.gemini_bot:
+            return self._compose_response(message, profile, brain, portfolio, snapshots, news_map, [])
+        
+        context = {
+            "portfolio": {
+                "total_value": portfolio.total_value,
+                "cash": portfolio.cash,
+                "day_pnl": portfolio.day_pnl,
+            },
+            "market_regime": brain.market_regime,
+            "watchlist": profile.watchlist,
+            "recent_news": [
+                f"{ticker}: {item.title}" 
+                for ticker, items in news_map.items() 
+                for item in items[:1]
+            ],
+        }
+        
+        return await self.gemini_bot.chat(message, context)
 
     @staticmethod
     def suggested_prompts() -> list[str]:
